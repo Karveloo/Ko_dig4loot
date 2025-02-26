@@ -1,16 +1,34 @@
 ESX = exports["es_extended"]:getSharedObject()
 
+local activeTokens = {}
 
+-- token
 ESX.RegisterUsableItem(Config.RequiredItem, function(source)
-    TriggerClientEvent("digging:start", source)
+    local _source = source
+    local xPlayer = ESX.GetPlayerFromId(_source)
+    if not xPlayer then return end
+
+    local token = math.random(100000, 999999)
+    activeTokens[_source] = token
+    
+    TriggerClientEvent("digging:verify", _source, token)
+    TriggerClientEvent("digging:start", _source)
+
 end)
 
 RegisterNetEvent("digging:reward")
-AddEventHandler("digging:reward", function()
+AddEventHandler("digging:reward", function(clientToken)
     local _source = source
     local xPlayer = ESX.GetPlayerFromId(_source)
     
+    -- check for exploit
     if not xPlayer then return end
+    if not activeTokens[_source] or activeTokens[_source] ~= clientToken then
+        print('[Exploit] digging reward')
+        return
+    end
+
+    activeTokens[_source] = nil
 
     local playerCoords = GetEntityCoords(GetPlayerPed(_source))
     local inDigArea = false
@@ -30,12 +48,11 @@ AddEventHandler("digging:reward", function()
     local reward = Config.Rewards[rewardTier][math.random(#Config.Rewards[rewardTier])]
 
     xPlayer.addInventoryItem(reward, 1)
-    print(reward)
     sendToDiscord(xPlayer.getName(), reward)
 end)
 
 
--- valitte taso
+-- tier
 function getRewardTier()
     local chance = math.random(100)
     local cumulative = 0
