@@ -1,6 +1,6 @@
 local digging = false
 
--- chekka locaatio
+-- chekkaa locaatio
 function isPlayerInDigArea()
     for _, location in pairs(Config.DiggingLocations) do
         if #(GetEntityCoords(PlayerPedId()) - location) <= Config.DigRadius then
@@ -10,16 +10,24 @@ function isPlayerInDigArea()
     return false
 end
 
+-- token
+RegisterNetEvent('digging:verify')
+AddEventHandler('digging:verify', function (token)
+    digToken = token
+end)
+
 -- digging
 RegisterNetEvent("digging:start")
 AddEventHandler("digging:start", function()
     if digging then return end
+
     if not isPlayerInDigArea() then
         lib.notify({ title = Config.locales.digging, description = Config.locales.inarea, type = "information" })
         return
     end
         local success = lib.skillCheck({'easy', 'easy', {areaSize = 60, speedMultiplier = 1},}, {'w', 'a', 's', 'd'})
         if success then
+            digging = true
             if lib.progressCircle({
                 duration = 5000,
                 label = Config.locales.digging,
@@ -29,21 +37,27 @@ AddEventHandler("digging:start", function()
                     car = true,
                     movement = true
                 },
-                anim = { dict = "amb@world_human_gardener_plant@male@idle_a", 
-                clip = "idle_a" 
-            },
+                anim = {
+                    dict = "random@burial",
+                    clip = "a_burial",
+                },
                 prop = {
-                    model = `prop_tool_shovel`,
+                    model = GetHashKey("prop_tool_shovel"),
                     bone = 28422,
-                    pos = { x = 0.15, y = 0.0, z = 0.0 },
-                    rot = { x = 0.0, y = 0.0, z = 60.0 },
+                    pos = vector3(0.03, 0.01, 0.2),
+                    rot = vector3(0.0, 0.0, -9.5)
                 },
             }) then
-                    TriggerServerEvent("digging:reward")
+                if digToken then
+                    TriggerServerEvent("digging:reward", digToken)
+                    digToken = nil
                     lib.notify({ title = Config.locales.digging, description = Config.locales.find, type = "success" })
+                else print('[SECURITY] no valid token')
+                end
                 else
                     lib.notify({ title = Config.locales.digging, description = Config.locales.canceled, type = "information" })
                 end
+                digging = false
         else
             lib.notify({ title = Config.locales.digging, description = Config.locales.failed, type = "error" })
     end
